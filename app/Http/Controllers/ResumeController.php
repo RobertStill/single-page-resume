@@ -4,25 +4,30 @@ namespace App\Http\Controllers;
 
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Cache;
-use App\DataObjects\Resume;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\ResumeService;
 
-class ResumeController extends Controller
+
+class ResumeController
 {
+    public function __construct(private readonly ResumeService $resumeService)
+    {
+
+    }
+
     public function index(Factory $view): View
     {
-        
-        $resume = Cache::remember('resume_data', now()->addDay(), function () {
-            $resume = Storage::disk('resumes')->get('resume.json');
-            $resume_data = json_decode($resume, true);
-
-            return Resume::fromArray($resume_data);
-        });
-
         return $view->make('resume', [
-            'resume' => $resume,
-            'allowDownload' => "true"
+            'resume' => $this->resumeService->getResume(),
+            'allowDownload' => true
         ]);
+    }
+
+    public function download()
+    {
+        $resume = $this->resumeService->getResume();
+        $pdfDocument = Pdf::loadView('resume', ['resume' => $resume, 'allowDownload' => false]);
+
+        return $pdfDocument->download($resume->basics->name . '-resume.pdf');
     }
 }
